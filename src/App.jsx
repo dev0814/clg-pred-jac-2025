@@ -110,7 +110,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>JAC Delhi College Predictor</h1>
+      <h1>JAC Delhi College Predictor 2025</h1>
       <form onSubmit={handleSubmit} className="form">
         <input
           value={username}
