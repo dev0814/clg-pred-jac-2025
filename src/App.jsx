@@ -15,6 +15,8 @@ function App() {
   const [genders, setGenders] = useState([]);
   const [regions, setRegions] = useState([]);
   const [sortDirection, setSortDirection] = useState("asc");
+  const [programFilter, setProgramFilter] = useState("");
+  const [instituteFilter, setInstituteFilter] = useState([]);
 
   useEffect(() => {
     fetch("/JAC.json")
@@ -32,15 +34,18 @@ function App() {
 
     const results = data.filter((row) => {
       const closingRank = parseInt(row["Closing Rank"]);
-      const validRank = !isNaN(closingRank) && parseInt(rank) <= closingRank;
-      const validCategory = row["Category"] === category;
-      const validGender = row["Gender"] === gender;
-      const validRegion = row["Region"] === region;
-
-      return validRank && validCategory && validGender && validRegion;
+      return (
+        !isNaN(closingRank) &&
+        parseInt(rank) <= closingRank &&
+        row["Category"] === category &&
+        row["Gender"] === gender &&
+        row["Region"] === region
+      );
     });
 
     setFiltered(results);
+    setProgramFilter("");
+    setInstituteFilter("");
     setSortDirection("asc");
   };
 
@@ -51,6 +56,8 @@ function App() {
     setRank("");
     setUsername("");
     setFiltered([]);
+    setProgramFilter("");
+    setInstituteFilter("");
   };
 
   const sortClosingRank = () => {
@@ -80,7 +87,7 @@ function App() {
     const wrappedUserInfo = doc.splitTextToSize(userInfo, 190);
     doc.text(wrappedUserInfo, 10, 18);
 
-    const tableBody = filtered.map((row) => [
+    const tableBody = displayedResults.map((row) => [
       row["Institute name"],
       row["Branch"],
       (row["Total B.Tech Fees (4 Years)"] || "-").replace(/₹/g, "Rs."),
@@ -107,6 +114,12 @@ function App() {
 
     doc.save(`JAC_${username.replace(/\s+/g, "_")}_Predictions.pdf`);
   };
+
+  const displayedResults = filtered.filter((row) => {
+    const matchProgram = programFilter ? row["Branch"] === programFilter : true;
+    const matchInstitute = instituteFilter ? row["Institute name"] === instituteFilter : true;
+    return matchProgram && matchInstitute;
+  });
 
   return (
     <div className="container">
@@ -154,11 +167,41 @@ function App() {
         <>
           <h2>Predicted Colleges for {username}</h2>
           <div className="table-controls">
-            <button onClick={downloadPDF}>Download PDF</button>
-            <button onClick={sortClosingRank}>
-              Sort by Closing Rank {sortDirection === "asc" ? "↑" : "↓"}
-            </button>
+            <div className="button-row">
+              <button onClick={downloadPDF}>Download PDF</button>
+              <button onClick={sortClosingRank}>
+                Sort by Closing Rank {sortDirection === "asc" ? "↑" : "↓"}
+              </button>
+            </div>
+
+            <div className="filter-row">
+              <div className="filter-block">
+                <label>Filter by Branch:</label>
+                <select
+                  value={programFilter}
+                  onChange={(e) => setProgramFilter(e.target.value)}
+                >
+                  <option value="">All Branches</option>
+                  {[...new Set(filtered.map((row) => row["Branch"]))].sort().map((p, i) => (
+                    <option key={i} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-block">
+                <label>Filter by Institute:</label>
+                <select
+                  value={instituteFilter}
+                  onChange={(e) => setInstituteFilter(e.target.value)}
+                >
+                  <option value="">All Institutes</option>
+                  {[...new Set(filtered.map((row) => row["Institute name"]))].sort().map((iName, i) => (
+                    <option key={i} value={iName}>{iName}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
+
           <table>
             <thead>
               <tr>
@@ -176,7 +219,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((row, i) => (
+              {displayedResults.map((row, i) => (
                 <tr key={i}>
                   <td>{row["Institute name"]}</td>
                   <td>{row["Branch"]}</td>
